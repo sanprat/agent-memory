@@ -1,10 +1,7 @@
 """
-Seed memories into Mem0 for a specific project.
+Seed experience-based memories into Mem0.
 
-Environment Variables:
-  OPENROUTER_API_KEY     — Your OpenRouter API key
-  MEM0_COLLECTION        — Qdrant collection name (default: agent_memory)
-  LLM_MODEL              — OpenRouter model (default: nvidia/nemotron-3-nano-30b-a3b:free)
+Experience > Abstract rules. Agents search for real-world problems, not textbook rules.
 
 Usage:
   OPENROUTER_API_KEY=sk-or-v1-... MEM0_COLLECTION=myproject python3 seed_memories.py
@@ -58,42 +55,77 @@ config = {
 print(f"Initializing Mem0 (collection: {COLLECTION})...")
 m = Memory.from_config(config)
 
-# ── Define your memories here ──────────────────────────────────
-# Edit these lists for your project.
+# ──────────────────────────────────────────────────────────────
+# TDD MEMORIES — Experience + Decision + Rule Hybrid
+# ──────────────────────────────────────────────────────────────
+TDD_MEMORIES = [
+    # Experience-driven (HIGH VALUE — matches how agents search)
+    ("Previously writing implementation before tests led to unclear requirements and rework. Always start with a failing test first.", "tdd"),
+    ("Fixing tests instead of implementation caused false confidence and hidden bugs. When a test fails, fix the code not the test.", "tdd"),
+    ("Writing multiple failing tests at once made debugging extremely difficult. Stick to one failing test at a time.", "tdd"),
+    ("Refactoring while tests were failing broke everything and wasted hours. Only refactor when all tests are green.", "tdd"),
 
-TDD_RULES = [
-    ("Always write a failing test (red) before writing any implementation code. Never write production code without a failing test first.", "tdd"),
-    ("Write the minimum amount of code to make the failing test pass (green). Do not over-engineer or add extra logic beyond what the test requires.", "tdd"),
-    ("After green, refactor the code to improve structure and readability while keeping all tests passing. Never refactor when tests are failing.", "tdd"),
-    ("The TDD cycle is strictly: Red → Green → Refactor. Skipping any step is not allowed.", "tdd"),
-    ("Never modify a test to make it pass. Fix the implementation instead.", "tdd"),
-    ("One failing test at a time. Do not write multiple failing tests simultaneously.", "tdd"),
-    ("Test file must exist and test must fail before any implementation file is created or modified.", "tdd"),
+    # Rule anchors (still useful for enforcement)
+    ("TDD cycle is strictly Red → Green → Refactor. Do not skip any step.", "tdd"),
+    ("Write the minimum code to make the failing test pass. No over-engineering during the green phase.", "tdd"),
+    ("Test file must exist and the test must fail before any implementation file is created or modified.", "tdd"),
 ]
 
-# Add your project-specific memories below:
-# ARCHITECTURE = [
-#     ("My project uses FastAPI with PostgreSQL", "architecture"),
-#     ("Frontend is Next.js with Tailwind CSS", "architecture"),
-# ]
+# ──────────────────────────────────────────────────────────────
+# DECISION MEMORIES — Why we do things a certain way
+# ──────────────────────────────────────────────────────────────
+DECISIONS = [
+    ("Using TDD improves agent reliability because it enforces incremental correctness and catches regressions early.", "decision"),
+    ("Minimal code during green phase prevents over-engineering and reduces the surface area for bugs.", "decision"),
+    ("One failing test at a time creates a clear feedback loop and makes debugging trivial.", "decision"),
+]
 
-ALL_MEMORIES = TDD_RULES  # + ARCHITECTURE
+# ──────────────────────────────────────────────────────────────
+# ANTI-PATTERNS — What NOT to do (goldmine for retrieval)
+# ──────────────────────────────────────────────────────────────
+ANTI_PATTERNS = [
+    ("Writing large chunks of code before running any tests leads to cascading failures that are painful to debug.", "anti_pattern"),
+    ("Skipping the refactor step results in messy, hard-to-maintain code that degrades quickly over iterations.", "anti_pattern"),
+    ("Modifying test assertions to make them pass creates false positives — tests pass but the code is still wrong.", "anti_pattern"),
+]
+
+# ──────────────────────────────────────────────────────────────
+# Combine all
+# ──────────────────────────────────────────────────────────────
+ALL_MEMORIES = TDD_MEMORIES + DECISIONS + ANTI_PATTERNS
 
 print(f"\n=== Seeding {len(ALL_MEMORIES)} Memories ===")
 for i, (text, category) in enumerate(ALL_MEMORIES, 1):
     try:
-        result = m.add(text, user_id="shared_rules", metadata={"type": category, "scope": "global"})
+        result = m.add(
+            text,
+            user_id="shared_rules",
+            metadata={"type": category, "scope": "global", "source": "seed_v2"}
+        )
         stored = len(result.get("results", []))
-        print(f"[{i}/{len(ALL_MEMORIES)}] ✓ Stored ({stored} entries)")
+        print(f"[{i}/{len(ALL_MEMORIES)}] ✓ Stored ({stored} entries) [{category}]")
         time.sleep(1)
     except Exception as e:
         print(f"[{i}/{len(ALL_MEMORIES)}] ✗ Error: {e}")
 
-# ── Verification ───────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
+# Verification — realistic search queries agents would use
+# ──────────────────────────────────────────────────────────────
 print("\n=== Verification ===")
-results = m.search("TDD rules", user_id="shared_rules", limit=5)
-print(f"Found {len(results['results'])} memories:")
-for i, r in enumerate(results["results"], 1):
-    print(f"  {i}. score={r['score']:.3f} | {r['memory'][:80]}")
+queries = [
+    "test failing but code works",
+    "why did test pass incorrectly",
+    "writing code before tests",
+    "too many failing tests",
+    "when is it safe to refactor",
+]
+for query in queries:
+    results = m.search(query, user_id="shared_rules", limit=2)
+    if results.get("results"):
+        print(f"\n🔍 \"{query}\" → {len(results['results'])} result(s):")
+        for r in results["results"]:
+            print(f"   • [{r['metadata'].get('type', '?')}] {r['memory'][:90]}")
+    else:
+        print(f"\n🔍 \"{query}\" → 0 results")
 
-print("\n✅ Seeding complete!")
+print(f"\n✅ Seeding complete! {len(ALL_MEMORIES)} memories stored in collection '{COLLECTION}'")
