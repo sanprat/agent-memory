@@ -37,6 +37,8 @@ AGENT_ID = os.getenv("MEM0_AGENT_ID", "agent-memory")
 COLLECTION_NAME = os.getenv("MEM0_COLLECTION", "agent_memory")
 LLM_MODEL = os.getenv("LLM_MODEL", "nvidia/nemotron-3-nano-30b-a3b:free")
 OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY", os.getenv("OPENAI_API_KEY", ""))
+if not OPENROUTER_KEY:
+    logger.warning("OPENROUTER_API_KEY not set — agents must export it in their shell env")
 OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 os.environ["OPENAI_API_KEY"] = OPENROUTER_KEY

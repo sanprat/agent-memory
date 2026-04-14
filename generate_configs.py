@@ -21,9 +21,9 @@ MCP_SERVER = {
         "command": "python3",
         "args": [MCP_SCRIPT],
         "env": {
-            "OPENROUTER_API_KEY": os.environ.get("OPENROUTER_API_KEY", ""),
             "MEM0_AGENT_ID": AGENT_ID,
             "MEM0_COLLECTION": COLLECTION,
+            "NOTE": "Set OPENROUTER_API_KEY in your shell env before starting the agent",
         },
     }
 }
