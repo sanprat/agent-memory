@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.env
+mem0_db/
+mem0_qdrant/
+*.egg-info/
+.venv/
+node_modules/
