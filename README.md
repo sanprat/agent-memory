@@ -1,6 +1,6 @@
 # Agent Memory — Shared Memory for AI Coding Agents
 
-Local, persistent, semantic memory for your AI coding agents.
+Fully local, persistent, semantic memory for your AI coding agents. **No external API keys required.**
 
 **Works with:** Claude Code, OpenCode, Qwen Code, KiloCode, Antigravity, and any MCP-compatible agent.
 
@@ -15,18 +15,16 @@ Global Qdrant (Docker)          Ollama (Embeddings)
   Qwen   Claude   OpenCode KiloCode  Antigravity
 ```
 
-- **Qdrant** (Docker) — Vector store, one global instance shared across all projects
-- **Ollama** — Local embedding model (`nomic-embed-text`)
-- **OpenRouter** — LLM for memory extraction (`nvidia/nemotron-3-nano-30b-a3b:free`)
+- **Qdrant** — Vector store, one global instance shared across all projects
+- **Ollama** — Local LLM (`gemma3:4b`) + embedding model (`nomic-embed-text`)
 - **Mem0** — Memory orchestration layer
 - **MCP Server** — Exposes memory tools to your agents
 
 ## Prerequisites
 
-- **Python 3.11+** with `mem0ai`, `mcp`, `ollama` installed
-- **Docker** running (for Qdrant)
-- **Ollama** running locally with `nomic-embed-text` model
-- **OpenRouter API key**
+- **Python 3.11+**
+- **Qdrant** running (Docker or native)
+- **Ollama** running locally with `nomic-embed-text` and `gemma3:4b` models
 
 ## Quick Start
 
@@ -44,23 +42,30 @@ docker run -d --name qdrant-mem0 --restart unless-stopped \
 ollama pull nomic-embed-text
 ```
 
-### 3. Seed memories for your project
+### 3. Set up the Python environment
 
 ```bash
-OPENROUTER_API_KEY=sk-or-v1-... MEM0_COLLECTION=myproject python3 seed_memories.py
+python3.13 -m venv .venv
+.venv/bin/pip install mem0ai mcp ollama
+```
+
+### 4. Seed memories for your project
+
+```bash
+.venv/bin/python3 seed_memories.py
 ```
 
 Edit `seed_memories.py` to add your project-specific memories (TDD rules, architecture decisions, coding conventions, etc.).
 
-### 4. Generate agent configs
+### 5. Generate agent configs
 
 ```bash
-OPENROUTER_API_KEY=sk-or-v1-... python3 generate_configs.py
+python3 generate_configs.py
 ```
 
 This creates MCP config files for all supported agents in the project root.
 
-### 5. Done — agents auto-load rules
+### 6. Done — agents auto-load rules
 
 Every agent reads `.agent-memory-rules.md` on startup and automatically:
 - **Searches memory** before coding (finds TDD rules, conventions, past decisions)
@@ -97,7 +102,7 @@ The `mem0_mcp_server.py` exposes 4 tools to agents:
 
 For each new project:
 
-1. **Copy** `mem0_mcp_server.py`, `seed_memories.py`, `generate_configs.py`, and `.agent-memory-rules.md` into the project
+1. **Copy** `mem0_mcp_server.py`, `seed_memories.py`, `generate_configs.py`, `.agent-memory-rules.md`, and the `.venv/` into the project
 2. **Edit** `seed_memories.py` — add your project-specific memories (use a unique `MEM0_COLLECTION` name)
 3. **Run** `seed_memories.py` to populate memory
 4. **Run** `generate_configs.py` to create agent MCP configs
@@ -107,10 +112,10 @@ For each new project:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `OPENROUTER_API_KEY` | OpenRouter API key | — |
 | `MEM0_AGENT_ID` | Agent/user identifier | `agent-memory` |
 | `MEM0_COLLECTION` | Qdrant collection name | `agent_memory` |
-| `LLM_MODEL` | OpenRouter model | `nvidia/nemotron-3-nano-30b-a3b:free` |
+| `LLM_MODEL` | Ollama LLM model | `gemma3:4b` |
+| `EMBED_MODEL` | Ollama embedding model | `nomic-embed-text` |
 | `OLLAMA_BASE_URL` | Ollama URL | `http://localhost:11434` |
 | `QDRANT_URL` | Qdrant URL | `http://localhost:6333` |
 

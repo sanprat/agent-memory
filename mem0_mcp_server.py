@@ -2,15 +2,18 @@
 Mem0 MCP Server — Local shared memory for AI coding agents.
 Agents connect via MCP stdio transport.
 
+Fully local stack: Ollama (LLM + embeddings) + Qdrant (vector store).
+No external API keys required.
+
 Environment Variables:
-  OPENROUTER_API_KEY     — Your OpenRouter API key
   MEM0_AGENT_ID          — Agent/user identifier (default: agent-memory)
   MEM0_COLLECTION        — Qdrant collection name (default: agent_memory)
-  LLM_MODEL              — OpenRouter model (default: nvidia/nemotron-3-nano-30b-a3b:free)
+  LLM_MODEL              — Ollama LLM model (default: gemma3:4b)
+  EMBED_MODEL            — Ollama embedding model (default: nomic-embed-text)
   OLLAMA_BASE_URL        — Ollama URL (default: http://localhost:11434)
   QDRANT_URL             — Qdrant URL (default: http://localhost:6333)
 
-Run: OPENROUTER_API_KEY=sk-or-v1-... python3 mem0_mcp_server.py
+Run: python3 mem0_mcp_server.py
 """
 import os
 import json
@@ -35,21 +38,17 @@ logger = logging.getLogger("mem0-mcp")
 # ── Config ─────────────────────────────────────────────────────────────
 AGENT_ID = os.getenv("MEM0_AGENT_ID", "agent-memory")
 COLLECTION_NAME = os.getenv("MEM0_COLLECTION", "agent_memory")
-LLM_MODEL = os.getenv("LLM_MODEL", "nvidia/nemotron-3-nano-30b-a3b:free")
-OPENROUTER_KEY = os.getenv("OPENROUTER_API_KEY", os.getenv("OPENAI_API_KEY", ""))
-if not OPENROUTER_KEY:
-    logger.warning("OPENROUTER_API_KEY not set — agents must export it in their shell env")
+LLM_MODEL = os.getenv("LLM_MODEL", "gemma3:4b")
+EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic-embed-text")
 OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
-os.environ["OPENAI_API_KEY"] = OPENROUTER_KEY
 
 memory_config = {
     "llm": {
-        "provider": "openai",
+        "provider": "ollama",
         "config": {
             "model": LLM_MODEL,
-            "openai_base_url": "https://openrouter.ai/api/v1",
-            "api_key": OPENROUTER_KEY,
+            "ollama_base_url": OLLAMA_URL,
             "temperature": 0,
             "max_tokens": 2000,
         }
@@ -57,7 +56,7 @@ memory_config = {
     "embedder": {
         "provider": "ollama",
         "config": {
-            "model": "nomic-embed-text",
+            "model": EMBED_MODEL,
             "ollama_base_url": OLLAMA_URL,
         }
     },
@@ -148,20 +147,20 @@ async def handle_call_tool(name: str, arguments: dict | None) -> list[TextConten
         elif name == "mem0_search":
             results = memory.search(
                 query=arguments["query"],
-                user_id=agent_id,
+                filters={"user_id": agent_id},
                 limit=arguments.get("limit", 5)
             )
             return [TextContent(type="text", text=json.dumps(results, indent=2))]
 
         elif name == "mem0_list":
             results = memory.get_all(
-                user_id=agent_id,
+                filters={"user_id": agent_id},
                 limit=arguments.get("limit", 20)
             )
             return [TextContent(type="text", text=json.dumps(results, indent=2))]
 
         elif name == "mem0_delete":
-            result = memory.delete(arguments["memory_id"], user_id=agent_id)
+            result = memory.delete(arguments["memory_id"])
             return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
         else:

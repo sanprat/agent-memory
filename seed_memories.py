@@ -4,7 +4,7 @@ Seed experience-based memories into Mem0.
 Experience > Abstract rules. Agents search for real-world problems, not textbook rules.
 
 Usage:
-  OPENROUTER_API_KEY=sk-or-v1-... MEM0_COLLECTION=myproject python3 seed_memories.py
+  MEM0_COLLECTION=myproject python3 seed_memories.py
 """
 import os, time, sqlite3
 
@@ -17,19 +17,17 @@ sqlite3.connect = _patch
 
 from mem0 import Memory
 
-openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
-os.environ["OPENAI_API_KEY"] = openrouter_key
-
 COLLECTION = os.getenv("MEM0_COLLECTION", "agent_memory")
-LLM_MODEL = os.getenv("LLM_MODEL", "nvidia/nemotron-3-nano-30b-a3b:free")
+LLM_MODEL = os.getenv("LLM_MODEL", "gemma3:4b")
+EMBED_MODEL = os.getenv("EMBED_MODEL", "nomic-embed-text")
+OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 config = {
     "llm": {
-        "provider": "openai",
+        "provider": "ollama",
         "config": {
             "model": LLM_MODEL,
-            "openai_base_url": "https://openrouter.ai/api/v1",
-            "api_key": openrouter_key,
+            "ollama_base_url": OLLAMA_URL,
             "temperature": 0,
             "max_tokens": 2000,
         }
@@ -37,8 +35,8 @@ config = {
     "embedder": {
         "provider": "ollama",
         "config": {
-            "model": "nomic-embed-text",
-            "ollama_base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+            "model": EMBED_MODEL,
+            "ollama_base_url": OLLAMA_URL,
         }
     },
     "vector_store": {
@@ -120,7 +118,7 @@ queries = [
     "when is it safe to refactor",
 ]
 for query in queries:
-    results = m.search(query, user_id="shared_rules", limit=2)
+    results = m.search(query, filters={"user_id": "shared_rules"}, limit=2)
     if results.get("results"):
         print(f"\n🔍 \"{query}\" → {len(results['results'])} result(s):")
         for r in results["results"]:

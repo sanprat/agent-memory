@@ -3,7 +3,7 @@
 Generate Mem0 MCP configs for all supported AI coding agents.
 
 Usage:
-  OPENROUTER_API_KEY=sk-or-v1-... python3 generate_configs.py
+  python3 generate_configs.py
 
 Supported agents: Claude Code, OpenCode, Qwen Code, KiloCode, Antigravity
 """
@@ -14,16 +14,16 @@ AGENT_ID = os.getenv("MEM0_AGENT_ID", "agent-memory")
 COLLECTION = os.getenv("MEM0_COLLECTION", "agent_memory")
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 MCP_SCRIPT = os.path.join(PROJECT_DIR, "mem0_mcp_server.py")
+VENV_PYTHON = os.path.join(PROJECT_DIR, ".venv", "bin", "python3")
 
 # ── MCP Server Definition ──────────────────────────────────────
 MCP_SERVER = {
     "mem0": {
-        "command": "python3",
+        "command": VENV_PYTHON,
         "args": [MCP_SCRIPT],
         "env": {
             "MEM0_AGENT_ID": AGENT_ID,
             "MEM0_COLLECTION": COLLECTION,
-            "NOTE": "Set OPENROUTER_API_KEY in your shell env before starting the agent",
         },
     }
 }
